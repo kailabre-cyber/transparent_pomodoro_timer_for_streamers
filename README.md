@@ -41,14 +41,14 @@ It follows the classic Pomodoro technique: 25 minutes of focused work followed b
 3. Click in "Interact with" in OBS to interact with the pomodoro timer: hover the mouse in the element to see the buttons "START", "PAUSE" and "RESET".
 
 # Example in OBS
-(Add a screenshot of your OBS scene with the timer overlay)
+![pomodoro-timer-first-screen](https://github.com/kailabre-cyber/transparent_pomodoro_timer_for_streamers/blob/main/pomo0.JPG)
+![when-hovering-the-mouse](https://github.com/kailabre-cyber/transparent_pomodoro_timer_for_streamers/blob/main/pomo1.png)
 
 # Future Improvements
-Alert sounds at start/end of sessions
 
-Pre-made themes
-
-Twitch API integration
+- Alert sounds at start/end of sessions
+- Pre-made themes
+- Twitch API integration
 
 # License
 This project is distributed under the MIT License — feel free to use and modify it.
