@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer - OBS Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .timer-container {
+            text-align: center;
+            background: transparent;
+            padding: 40px;
+            border-radius: 20px;
+            position: relative;
+        }
+
+
+
+        .pomo-counter {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #1F2937;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            text-transform: uppercase;
+        }
+
+        .timer {
+            font-size: 80px;
+            font-weight: 700;
+            margin: 12px 0;
+            font-family: 'Inter', 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1E293B;
+            text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .session-type {
+            font-size: 28px;
+            font-weight: 400;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #4B5563;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .timer-container:hover .controls {
+            opacity: 1;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-start {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-reset {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            z-index: -1;
+        }
+
+        .progress-ring circle {
+            fill: transparent;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .progress-ring .progress {
+            stroke: #DC2626;
+            transition: stroke-dashoffset 0.3s ease;
+            filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.3));
+        }
+
+        .focus .progress {
+            stroke: #DC2626;
+            filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.3));
+        }
+
+        .break .progress {
+            stroke: #059669;
+            filter: drop-shadow(0 0 8px rgba(5, 150, 105, 0.3));
+        }
+
+        .timer-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+
+
+
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="timer-container">
+        <div class="pomo-counter" id="pomoCounter">POMO 0</div>
+        
+        <div class="timer-wrapper">
+            <svg class="progress-ring">
+                <circle class="progress" cx="150" cy="150" r="140" id="progressCircle"></circle>
+            </svg>
+            <div class="timer" id="timer">25:00</div>
+        </div>
+        
+        <div class="session-type" id="sessionType">FOCO</div>
+        
+        <div class="controls">
+            <button class="btn btn-start" id="startBtn">Iniciar</button>
+            <button class="btn btn-reset" id="resetBtn">Resetar</button>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        class PomodoroTimer {
+            constructor() {
+                this.focusTime = 25 * 60; // 25 minutes in seconds
+                this.breakTime = 5 * 60;  // 5 minutes in seconds
+                this.currentTime = this.focusTime;
+                this.isRunning = false;
+                this.isFocusSession = true;
+                this.pomoCount = 0;
+                this.interval = null;
+                this.totalTime = this.focusTime;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.updateDisplay();
+            }
+
+            initializeElements() {
+                this.timerElement = document.getElementById('timer');
+                this.sessionTypeElement = document.getElementById('sessionType');
+                this.pomoCounterElement = document.getElementById('pomoCounter');
+                this.startBtn = document.getElementById('startBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.progressCircle = document.getElementById('progressCircle');
+                this.notification = document.getElementById('notification');
+                
+                // Set up progress circle
+                const circumference = 2 * Math.PI * 140;
+                this.progressCircle.style.strokeDasharray = circumference;
+                this.progressCircle.style.strokeDashoffset = 0;
+            }
+
+            setupEventListeners() {
+                this.startBtn.addEventListener('click', () => this.toggleTimer());
+                this.resetBtn.addEventListener('click', () => this.reset());
+            }
+
+            toggleTimer() {
+                if (this.isRunning) {
+                    this.pause();
+                } else {
+                    this.start();
+                }
+            }
+
+            start() {
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.startBtn.textContent = 'Pausar';
+                    this.startBtn.classList.add('btn-reset');
+                    this.startBtn.classList.remove('btn-start');
+                    
+                    this.interval = setInterval(() => {
+                        this.currentTime--;
+                        this.updateDisplay();
+                        
+                        if (this.currentTime <= 0) {
+                            this.sessionComplete();
+                        }
+                    }, 1000);
+                }
+            }
+
+            pause() {
+                this.isRunning = false;
+                this.startBtn.textContent = 'Iniciar';
+                this.startBtn.classList.remove('btn-reset');
+                this.startBtn.classList.add('btn-start');
+                
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+            }
+
+            sessionComplete() {
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+
+                if (this.isFocusSession) {
+                    this.pomoCount++;
+                    this.showNotification(`Foco completo! Pomo ${this.pomoCount} adicionado!`);
+                    this.currentTime = this.breakTime;
+                    this.totalTime = this.breakTime;
+                    this.isFocusSession = false;
+                    this.sessionTypeElement.textContent = 'DESCANSO';
+                    this.sessionTypeElement.className = 'session-type break';
+                    document.body.classList.add('break');
+                    document.body.classList.remove('focus');
+                } else {
+                    this.showNotification('Intervalo terminado! Hora de focar novamente!');
+                    this.currentTime = this.focusTime;
+                    this.totalTime = this.focusTime;
+                    this.isFocusSession = true;
+                    this.sessionTypeElement.textContent = 'FOCO';
+                    this.sessionTypeElement.className = 'session-type focus';
+                    document.body.classList.add('focus');
+                    document.body.classList.remove('break');
+                }
+
+                this.isRunning = false;
+                this.startBtn.textContent = 'Iniciar';
+                this.startBtn.classList.remove('btn-reset');
+                this.startBtn.classList.add('btn-start');
+                
+                this.updateDisplay();
+            }
+
+            reset() {
+                this.pause();
+                this.currentTime = this.focusTime;
+                this.totalTime = this.focusTime;
+                this.isFocusSession = true;
+                this.pomoCount = 0;
+                this.sessionTypeElement.textContent = 'FOCO';
+                this.sessionTypeElement.className = 'session-type';
+                document.body.classList.remove('break', 'focus');
+                this.updateDisplay();
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.currentTime / 60);
+                const seconds = this.currentTime % 60;
+                this.timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                this.pomoCounterElement.textContent = `Pomo ${this.pomoCount}`;
+                
+                // Update progress circle
+                const progress = (this.totalTime - this.currentTime) / this.totalTime;
+                const circumference = 2 * Math.PI * 140;
+                this.progressCircle.style.strokeDashoffset = circumference - (progress * circumference);
+            }
+
+            showNotification(message) {
+                this.notification.textContent = message;
+                this.notification.classList.add('show');
+                
+                setTimeout(() => {
+                    this.notification.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Initialize the timer when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const timer = new PomodoroTimer();
+        });
+    </script>
+</body>
+</html> 
